@@ -1,0 +1,7 @@
+# ── Credentials — never commit these ──
+
+# ── OS / editor noise ──
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp

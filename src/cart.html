@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luminos — Your Cart</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/shop.css">
+  <style>
+    body { background: var(--bg); }
+    nav {
+      position: fixed; top: 0; width: 100%;
+      padding: 0.8rem 10%;
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(250,249,245,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-family: var(--font-display); font-size: 1.4rem; font-weight: 700;
+      text-decoration: none; color: var(--text);
+    }
+    .lum-brand-icon { background: var(--text) !important; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+    .lum-brand-icon i { color: var(--accent); font-size: 1rem; }
+    .nav-right { display: flex; gap: 1rem; align-items: center; }
+    .nav-back { font-size: 0.88rem; color: var(--text-muted); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 0.4rem; }
+    .nav-back:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="../index.html" class="nav-brand">
+      <div class="brand-icon lum-brand-icon"><i class="fa-solid fa-bolt"></i></div>
+      Luminos
+    </a>
+    <div class="nav-right">
+      <a href="../index.html#products" class="nav-back"><i class="fa-solid fa-arrow-left"></i> Continue Shopping</a>
+    </div>
+  </nav>
+
+  <div class="cart-page">
+    <h1><i class="fa-solid fa-bag-shopping" style="color:var(--accent);margin-right:0.5rem;"></i>Your Cart</h1>
+    <div id="cart-content"></div>
+  </div>
+
+  <script src="js/auth-local.js"></script>
+  <script>
+    // Cart storage (standalone, no import)
+    const CART_KEY = 'luminos_cart';
+    function getItems() { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); }
+    function saveItems(items) { localStorage.setItem(CART_KEY, JSON.stringify(items)); renderCart(); }
+    function removeItem(id) { saveItems(getItems().filter(i => i.id !== id)); }
+    function updateQty(id, qty) {
+      const items = getItems();
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      if (qty <= 0) { removeItem(id); return; }
+      item.qty = qty;
+      saveItems(items);
+    }
+    function getTotal() { return getItems().reduce((s, i) => s + i.price * i.qty, 0); }
+    function getCount() { return getItems().reduce((s, i) => s + i.qty, 0); }
+
+    function handleCheckout() {
+      if (!Auth.isLoggedIn()) {
+        sessionStorage.setItem('luminos_redirect_after_login', window.location.href);
+        window.location.href = 'login.html';
+        return;
+      }
+      // Demo: show success message
+      alert('🎉 Order placed! (Demo — no real payment processed)\n\nThank you for shopping with Luminos!');
+      localStorage.removeItem(CART_KEY);
+      renderCart();
+    }
+
+    function renderCart() {
+      const items = getItems();
+      const container = document.getElementById('cart-content');
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="cart-empty">
+            <i class="fa-solid fa-bag-shopping"></i>
+            <h2>Your cart is empty</h2>
+            <p>Browse our collection and add something you love.</p>
+            <a href="../index.html#products" class="btn-primary" style="display:inline-flex;align-items:center;gap:0.5rem;text-decoration:none;">
+              <i class="fa-solid fa-arrow-left"></i> Browse Products
+            </a>
+          </div>`;
+        return;
+      }
+
+      const shipping = getTotal() >= 50 ? 0 : 5.99;
+      const tax = getTotal() * 0.08;
+
+      container.innerHTML = `
+        <div class="cart-layout">
+          <div class="cart-items-list">
+            ${items.map(item => `
+              <div class="cart-item">
+                <div class="cart-item-emoji">${item.emoji}</div>
+                <div class="cart-item-info">
+                  <div class="cart-item-category">${item.category}</div>
+                  <div class="cart-item-name">${item.name}</div>
+                  <div class="cart-item-price">$${item.price.toFixed(2)} each</div>
+                </div>
+                <div class="cart-qty-ctrl">
+                  <button class="cart-qty-btn" onclick="updateQty('${item.id}', ${item.qty - 1})">−</button>
+                  <span class="cart-qty-val">${item.qty}</span>
+                  <button class="cart-qty-btn" onclick="updateQty('${item.id}', ${item.qty + 1})">+</button>
+                </div>
+                <div style="font-weight:700;min-width:60px;text-align:right;">$${(item.price * item.qty).toFixed(2)}</div>
+                <button class="cart-remove-btn" onclick="removeItem('${item.id}')" title="Remove">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="order-summary">
+            <h2>Order Summary</h2>
+            <div class="summary-row"><span>Subtotal (${getCount()} items)</span><span>$${getTotal().toFixed(2)}</span></div>
+            <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? '<span style="color:#059669;font-weight:700;">Free</span>' : '$' + shipping.toFixed(2)}</span></div>
+            <div class="summary-row"><span>Tax (8%)</span><span>$${tax.toFixed(2)}</span></div>
+            <div class="summary-row total"><span>Total</span><span>$${(getTotal() + shipping + tax).toFixed(2)}</span></div>
+            ${!Auth.isLoggedIn() ? `<p style="font-size:0.82rem;color:var(--text-muted);margin-top:1rem;text-align:center;"><a href="login.html" style="color:var(--accent);font-weight:600;">Sign in</a> to place your order.</p>` : ''}
+            <button class="btn-checkout" onclick="handleCheckout()">
+              <i class="fa-solid fa-credit-card"></i>
+              ${Auth.isLoggedIn() ? 'Place Order' : 'Sign In to Checkout'}
+            </button>
+            ${shipping > 0 ? `<p style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:0.8rem;">Add $${(50 - getTotal()).toFixed(2)} more for free shipping!</p>` : ''}
+          </div>
+        </div>`;
+    }
+
+    renderCart();
+  </script>
+</body>
+</html>
